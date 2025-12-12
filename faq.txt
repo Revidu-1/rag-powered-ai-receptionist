@@ -1,0 +1,45 @@
+Frequently Asked Questions
+
+GENERAL QUESTIONS
+
+Q: How do I request time off?
+A: Submit a time-off request through the HR portal at least two weeks in advance. Your manager will approve or deny the request within 3 business days. For emergency situations, contact your manager directly.
+
+Q: What is the process for reporting a technical issue?
+A: Submit a ticket through the IT help desk portal or email helpdesk@company.com. Include a detailed description of the issue, error messages if any, and what you were doing when the problem occurred. Critical issues affecting work should be called in to the IT hotline.
+
+Q: How do I enroll in health insurance?
+A: New employees can enroll during their first 30 days. Visit the HR portal and select "Benefits Enrollment." You'll need to provide information about yourself and any dependents. Changes can be made during annual open enrollment each November.
+
+PAYROLL QUESTIONS
+
+Q: When do I get paid?
+A: All employees are paid bi-weekly on Fridays. Direct deposit is required and can be set up through the payroll portal. Pay stubs are available online. If a payday falls on a holiday, you'll be paid on the previous business day.
+
+Q: How do I update my tax withholding?
+A: Log into the payroll portal and navigate to "Tax Forms." You can update your W-4 information at any time. Changes take effect within one to two pay periods.
+
+Q: What if I notice an error on my paycheck?
+A: Contact payroll@company.com immediately with details about the discrepancy. Payroll issues are typically resolved within 5 business days. If you're owed money, it will be included in your next paycheck.
+
+BENEFITS QUESTIONS
+
+Q: Can I change my health insurance plan during the year?
+A: Generally, you can only change during open enrollment in November. However, you can make changes within 30 days of a qualifying life event like marriage, birth of a child, or loss of other coverage.
+
+Q: Does the company match retirement contributions?
+A: Yes, the company matches 50% of employee contributions up to 6% of salary. To enroll, visit the HR portal and complete the retirement plan enrollment form. You can change your contribution percentage at any time.
+
+Q: What mental health resources are available?
+A: Our health insurance includes mental health coverage. We also offer an Employee Assistance Program (EAP) that provides 5 free counseling sessions per year. Contact HR for the EAP access code.
+
+TECHNICAL QUESTIONS
+
+Q: How do I access the company VPN?
+A: Download the VPN client from the IT portal and install it on your device. Use your company email and password to connect. If you have trouble, contact IT support. VPN access is required for all remote work.
+
+Q: What software is available for employees?
+A: Standard software includes Microsoft Office, project management tools, and communication platforms. Visit the IT portal to request additional software. All software must be approved by IT for security compliance.
+
+Q: How do I reset my password?
+A: Use the "Forgot Password" link on the login page. You'll receive a reset link via email. For additional help, contact IT support. Passwords must be changed every 90 days for security.
