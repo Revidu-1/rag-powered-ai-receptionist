@@ -37,3 +37,10 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# Data files (keep structure, ignore content if needed)
+# data/appointments.json  # Uncomment if you want to ignore appointments
+
+# Logs
+*.log
+.cursor/

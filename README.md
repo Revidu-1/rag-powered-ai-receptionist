@@ -1,138 +1,160 @@
-# Mini-RAG System
+# AI Salon Receptionist with Appointment Booking
 
-A simple Retrieval-Augmented Generation (RAG) system that demonstrates the core concepts of document retrieval and question answering.
+A LangGraph-based AI receptionist for a hair and nail salon, powered by OpenAI. The system can answer questions about salon services, pricing, and policies, and book appointments with a FastAPI backend and dashboard.
 
 ## Features
 
-- **Document Loading**: Loads multiple text files (handbook, FAQ, blog)
-- **Smart Chunking**: Splits text into chunks of ~300-500 tokens with overlap
-- **Embedding Generation**: Uses sentence transformers for semantic embeddings
-- **FAISS Vector Store**: Fast similarity search using Facebook AI Similarity Search
-- **LLM Integration**: Answers questions using retrieved context (requires OpenAI API key)
-- **Reranking Toggle**: Optional reranking mode for improved retrieval quality
+- 💇‍♀️ **AI Salon Receptionist**: Conversational AI that answers questions about salon services, pricing, and policies
+- 📅 **Appointment Booking**: Books salon appointments and saves them to the backend
+- 📊 **Dashboard**: Real-time dashboard to view and manage salon appointments
+- 🔍 **RAG System**: Retrieval-Augmented Generation using salon knowledge base
+- 💬 **Web Chat Interface**: Interactive web-based chat interface for customers
+- 📞 **Voice Calls (Twilio)**: Customers can call and speak with the AI receptionist (see `TWILIO_VOICE_SETUP.md`)
 
 ## Setup
 
-1. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+1. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-2. (Optional) Set OpenAI API key for LLM features:
-```bash
-export OPENAI_API_KEY="your-api-key-here"
-```
+2. **Set up OpenAI API key** (already in `.env`):
+   The API key is already configured in your `.env` file.
 
-If you don't set the API key, the system will still work but will return concatenated retrieved chunks instead of LLM-generated answers.
+## Running the System
 
-## Usage
+### 1. Start the Backend Server
 
-### Interactive Query Interface (Recommended)
-
-The easiest way to use the RAG system is with the interactive query interface:
+In one terminal, start the FastAPI backend:
 
 ```bash
-python query_rag.py
+python start_backend.py
 ```
 
-This will:
-1. Load all documents and build the index
-2. Let you ask questions interactively
-3. Show answers and retrieved chunks
-4. Allow you to adjust the number of chunks retrieved
-
-Example session:
-```
-Question: How many days of PTO do employees get?
-Number of chunks to retrieve (default=3): 3
-
-Answer: [Retrieved answer from documents]
-
-Retrieved 3 chunks:
-  Chunk 1: Source: handbook.txt, Score: 0.5621
-  ...
-```
-
-### Programmatic Usage
-
-You can also use the RAG system in your own Python code:
-
-```python
-from mini_rag import MiniRAG
-
-# Initialize
-rag = MiniRAG(use_reranking=False)  # Set to True for reranking
-
-# Load documents
-rag.load_documents(['handbook.txt', 'faq.txt', 'blog.txt'])
-
-# Generate embeddings and build index
-rag.generate_embeddings()
-
-# Ask a question
-answer, retrieved_chunks = rag.answer("What is the PTO policy?", k=3)
-
-print(answer)
-for chunk in retrieved_chunks:
-    print(f"Source: {chunk['metadata']['filename']}, Score: {chunk['score']}")
-```
-
-### Demo Script
-
-Run the main demo with predefined questions:
+Or directly:
 ```bash
-python mini_rag.py
+python backend.py
 ```
 
-### Testing
+The backend will be available at:
+- **Dashboard**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **API Base**: http://localhost:8000/api
 
-Run comprehensive tests with 5 questions:
+### 2. Run the AI Receptionist
+
+In another terminal, run the receptionist:
+
+**Interactive Mode** (recommended for booking appointments):
 ```bash
-python test_rag.py
+python ai_receptionist.py
 ```
 
-This will:
-- Test the system with 5 different questions
-- Compare results with and without reranking
-- Evaluate where the system works vs. fails
-- Provide recommendations for improvement
-
-## How It Works
-
-1. **Loading**: Documents are loaded from text files
-2. **Chunking**: Text is split into semantic chunks of ~300-500 tokens
-3. **Embedding**: Each chunk is converted to a vector embedding
-4. **Indexing**: Embeddings are stored in a FAISS index for fast retrieval
-5. **Retrieval**: For a query, the top-k most relevant chunks are retrieved
-6. **Answering**: An LLM (or simple concatenation) generates an answer from retrieved context
-
-## Files
-
-- `mini_rag.py`: Main RAG implementation
-- `test_rag.py`: Test script with 5 questions
-- `handbook.txt`: Sample employee handbook
-- `faq.txt`: Sample FAQ document
-- `blog.txt`: Sample blog posts
-
-## Customization
-
-You can modify the chunking strategy, embedding model, or retrieval parameters in `mini_rag.py`:
-
-```python
-# Change chunk size
-rag = MiniRAG()
-rag.chunker.token_limit = 500  # Adjust token limit
-
-# Enable reranking
-rag = MiniRAG(use_reranking=True)
-
-# Use different embedding model
-rag = MiniRAG(embedding_model="all-mpnet-base-v2")  # Larger, better model
+**Demo Mode** (for testing):
+```bash
+python ai_receptionist.py demo
 ```
+
+## Using the Receptionist
+
+The AI salon receptionist can:
+
+1. **Answer Questions**: Ask about salon services, pricing, policies, hours, and procedures
+2. **Book Appointments**: Say something like:
+   - "I'd like to book an appointment"
+   - "Can I schedule a haircut?"
+   - "I need to book a manicure"
+   - The receptionist will ask for: name, email, date (YYYY-MM-DD), time (HH:MM), and service type (haircut, manicure, pedicure, coloring, etc.)
+
+### Example Booking Conversation:
+
+```
+You: I'd like to book an appointment
+Receptionist: I'd be happy to help you book an appointment! What service would you like? (haircut, manicure, pedicure, hair color, etc.)
+
+You: I need a haircut
+Receptionist: Great! Could you please provide your name?
+
+You: Sarah Johnson
+Receptionist: Thank you, Sarah. What's your email address?
+
+You: sarah@example.com
+Receptionist: Perfect! What date would you like? Please provide it in YYYY-MM-DD format.
+
+You: 2024-12-20
+Receptionist: Great! What time would work for you? Please use 24-hour format (HH:MM).
+
+You: 14:30
+Receptionist: ✅ Appointment booked successfully! Your appointment ID is #1. Date: 2024-12-20, Time: 14:30, Service: haircut...
+```
+
+## Viewing Appointments
+
+Open your browser and go to:
+```
+http://localhost:8000
+```
+
+The dashboard will show:
+- All scheduled appointments
+- Statistics (total, scheduled, completed, cancelled)
+- Ability to update appointment status
+- Delete appointments
+
+The dashboard auto-refreshes every 5 seconds to show new bookings.
+
+## API Endpoints
+
+### Appointment Endpoints
+- `GET /api/appointments` - Get all appointments
+- `POST /api/appointments` - Create a new appointment
+- `GET /api/appointments/{id}` - Get a specific appointment
+- `PATCH /api/appointments/{id}?status={status}` - Update appointment status
+- `DELETE /api/appointments/{id}` - Delete an appointment
+
+### Chat Endpoints
+- `POST /api/chat` - Send a message to the AI receptionist (web chat)
+- `GET /chat` - Web chat interface
+
+### Twilio Voice Endpoints (if configured)
+- `POST /twilio/voice/incoming` - Receive Twilio voice call webhooks
+- `POST /twilio/voice/process` - Process speech input from voice calls
+- `GET /twilio/voice/status` - Check Twilio Voice integration status
+
+## Files Structure
+
+- `ai_receptionist.py` - Main salon receptionist with LangGraph workflow
+- `backend.py` - FastAPI backend server
+- `dashboard.html` - Salon appointment dashboard interface
+- `chat.html` - Web chat interface for customers
+- `start_backend.py` - Script to start the backend
+- `appointments.json` - Stores appointment data (auto-created)
+- `salon_policies.txt`, `salon_faq.txt`, `salon_blog.txt` - Salon knowledge base documents
+- `twilio_voice_integration.py` - Twilio Voice integration module (see `TWILIO_VOICE_SETUP.md`)
+- `TWILIO_VOICE_SETUP.md` - Twilio Voice integration setup guide
+
+## Integration Options
+
+### Web Chat
+The easiest way to interact with the receptionist is through the web chat interface:
+- Open http://localhost:8000/chat in your browser
+- Start chatting with the AI receptionist
+- Book appointments directly through the chat
+
+### Voice Calls (Twilio)
+Enable voice calls so customers can call and speak with the AI receptionist:
+- See `TWILIO_VOICE_SETUP.md` for detailed setup instructions
+- Requires Twilio account and phone number
+- Customers can book appointments via phone calls
+- Uses OpenAI Whisper for speech-to-text and Twilio for text-to-speech
 
 ## Notes
 
-- The system works without an OpenAI API key (uses simple concatenation)
-- Reranking can improve results but adds computation time
-- Chunk size of 300-500 tokens works well for most use cases
-- FAISS uses cosine similarity for retrieval
+- Make sure the backend is running before booking appointments through the receptionist
+- The backend stores appointments in `appointments.json`
+- The receptionist uses OpenAI's GPT-4o-mini model (configurable in code)
+- All salon appointments are visible on the dashboard in real-time
+- Operating hours: Monday-Saturday 9 AM-7 PM, Sunday 10 AM-5 PM
+- Services include: Haircuts, Styling, Coloring, Highlights, Manicures, Pedicures, Nail Art, Extensions, and more
+- Multiple channels (web chat, voice) all use the same AI receptionist and appointment booking system
+

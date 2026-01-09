@@ -1,0 +1,4 @@
+"""
+AI Salon Receptionist Application
+"""
+
