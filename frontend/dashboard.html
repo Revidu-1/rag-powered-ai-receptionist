@@ -240,12 +240,12 @@
 <body>
     <div class="container">
         <header>
-            <h1>💇‍♀️ Salon Appointment Dashboard</h1>
+            <h1>Salon Appointment Dashboard</h1>
             <p class="subtitle">Manage and view all scheduled salon appointments</p>
         </header>
 
         <div class="controls">
-            <button onclick="loadAppointments()">🔄 Refresh</button>
+            <button onclick="loadAppointments()">Refresh</button>
             <span id="last-updated" style="color: #94a3b8; font-size: 14px;"></span>
         </div>
 
@@ -293,7 +293,7 @@
                 console.error('Error loading appointments:', error);
                 listElement.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-icon">!</div>
                         <p>Error loading appointments. Make sure the backend is running on port 8000.</p>
                         <button onclick="loadAppointments()" style="margin-top: 15px;">Try Again</button>
                     </div>
@@ -333,7 +333,7 @@
             if (appointments.length === 0) {
                 listElement.innerHTML = `
                         <div class="empty-state">
-                        <div class="empty-state-icon">💇‍♀️</div>
+                        <div class="empty-state-icon">✂</div>
                         <p>No appointments scheduled yet.</p>
                         <p style="margin-top: 10px; font-size: 14px;">Appointments booked through the salon receptionist will appear here.</p>
                     </div>
@@ -349,26 +349,26 @@
                     </div>
                     <div class="appointment-details">
                         <div class="detail-item">
-                            <div class="detail-label">📧 Email</div>
+                            <div class="detail-label">Email</div>
                             <div class="detail-value">${escapeHtml(apt.email)}</div>
                         </div>
                         <div class="detail-item">
-                            <div class="detail-label">📅 Date</div>
+                            <div class="detail-label">Date</div>
                             <div class="detail-value">${formatDate(apt.date)}</div>
                         </div>
                         <div class="detail-item">
-                            <div class="detail-label">🕐 Time</div>
+                            <div class="detail-label">Time</div>
                             <div class="detail-value">${formatTime(apt.time)}</div>
                         </div>
                         ${apt.service ? `
                         <div class="detail-item">
-                            <div class="detail-label">💅 Service</div>
+                            <div class="detail-label">Service</div>
                             <div class="detail-value">${escapeHtml(apt.service)}</div>
                         </div>
                         ` : ''}
                         ${apt.purpose ? `
                         <div class="detail-item" style="grid-column: 1 / -1;">
-                            <div class="detail-label">💬 Purpose</div>
+                            <div class="detail-label">Purpose</div>
                             <div class="detail-value">${escapeHtml(apt.purpose)}</div>
                         </div>
                         ` : ''}
@@ -382,7 +382,7 @@
                             <button class="success" onclick="updateStatus(${apt.id}, 'completed')">✓ Mark Completed</button>
                             <button class="danger" onclick="updateStatus(${apt.id}, 'cancelled')">✗ Cancel</button>
                         ` : ''}
-                        <button class="danger" onclick="deleteAppointment(${apt.id})">🗑️ Delete</button>
+                        <button class="danger" onclick="deleteAppointment(${apt.id})">Delete</button>
                     </div>
                 </div>
             `).join('');

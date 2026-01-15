@@ -16,6 +16,20 @@ from pathlib import Path
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
+import sys
+import io
+
+# Ensure UTF-8 output on Windows to avoid UnicodeEncodeError in logs
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="backslashreplace")
+
+# #region agent log
+try:
+    with open(r"c:\Users\revid\RAG\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"timestamp":int(time.time()*1000),"sessionId":"debug-session","runId":"run2","hypothesisId":"A","location":"app/backend.py:module_import","message":"Backend module imported","data":{"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None),"stdout_errors":getattr(getattr(sys,"stdout",None),"errors",None)}}) + "\n")
+except Exception:
+    pass
+# #endregion
 
 app = FastAPI(title="Appointment Booking API", version="1.0.0")
 
@@ -69,6 +83,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             print(f"[LOG ERROR] {e}")
         # #endregion
+        # #region agent log
+        try:
+            log_path = r"c:\Users\revid\RAG\.cursor\debug.log"
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run2","hypothesisId":"E","location":"app/backend.py:RequestLoggingMiddleware:pre","message":"Request received (pid/encoding)","data":{"method":request.method,"path":str(request.url.path),"pid":os.getpid(),"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None),"stdout_errors":getattr(getattr(sys,"stdout",None),"errors",None)},"timestamp":int(time.time()*1000)}) + "\n")
+        except Exception:
+            pass
+        # #endregion
         response = await call_next(request)
         # #region agent log
         try:
@@ -77,6 +99,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"app/backend.py:RequestLoggingMiddleware","message":"Response sent","data":{"method":request.method,"path":str(request.url.path),"status_code":response.status_code},"timestamp":int(time.time()*1000)}) + "\n")
         except Exception as e:
             print(f"[LOG ERROR] {e}")
+        # #endregion
+        # #region agent log
+        try:
+            log_path = r"c:\Users\revid\RAG\.cursor\debug.log"
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run2","hypothesisId":"E","location":"app/backend.py:RequestLoggingMiddleware:post","message":"Response sent (pid/encoding)","data":{"method":request.method,"path":str(request.url.path),"status_code":response.status_code,"pid":os.getpid(),"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None),"stdout_errors":getattr(getattr(sys,"stdout",None),"errors",None)},"timestamp":int(time.time()*1000)}) + "\n")
+        except Exception:
+            pass
         # #endregion
         return response
 
@@ -408,10 +438,37 @@ async def update_appointment_status(
 async def chat_with_receptionist(chat_message: ChatMessage):
     """Chat endpoint - processes messages through the AI receptionist."""
     print(f"[CHAT] Received message: {chat_message.message[:50]}...")
+    # #region agent log
+    try:
+        with open(r"c:\Users\revid\RAG\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"timestamp":int(time.time()*1000),"sessionId":"debug-session","runId":"run2","hypothesisId":"B","location":"app/backend.py:chat_with_receptionist:entry","message":"Chat entry","data":{"msg_len":len(chat_message.message) if hasattr(chat_message,"message") else None,"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None),"stdout_errors":getattr(getattr(sys,"stdout",None),"errors",None)}}) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    
+    # Validate input
+    if not chat_message.message or not chat_message.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    
     try:
         from app.ai_receptionist import create_receptionist_graph, ReceptionistState
         from langchain_core.messages import HumanMessage, AIMessage
         print("[CHAT] Successfully imported receptionist modules")
+        # #region agent log
+        try:
+            with open(r"c:\Users\revid\RAG\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"timestamp":int(time.time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"app/backend.py:chat_with_receptionist:post_import","message":"Imported receptionist modules","data":{"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None),"msg_len":len(chat_message.message) if hasattr(chat_message,"message") else None}}) + "\n")
+        except Exception:
+            pass
+        # #endregion
+        
+        # Check OpenAI API key
+        import os
+        if not os.getenv('OPENAI_API_KEY'):
+            raise HTTPException(
+                status_code=500, 
+                detail="OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file."
+            )
         
         # Use session_id to maintain conversation state per user
         session_id = chat_message.session_id or "default"
@@ -484,16 +541,82 @@ async def chat_with_receptionist(chat_message: ChatMessage):
         
     except Exception as e:
         import traceback
+        error_trace = traceback.format_exc()
         error_msg = f"Error processing chat message: {str(e)}"
+        # #region agent log
+        try:
+            with open(r"c:\Users\revid\RAG\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"timestamp":int(time.time()*1000),"sessionId":"debug-session","runId":"run2","hypothesisId":"C","location":"app/backend.py:chat_with_receptionist:error_before_print","message":"Error captured before printing","data":{"error_type":type(e).__name__,"error_msg_contains_non_ascii":any(ord(ch) > 127 for ch in error_msg),"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None),"stdout_errors":getattr(getattr(sys,"stdout",None),"errors",None)}}) + "\n")
+        except Exception:
+            pass
+        # #endregion
         print(f"[CHAT ERROR] {error_msg}")
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=error_msg)
+        safe_trace = error_trace.encode("utf-8", "backslashreplace").decode("utf-8")
+        print(f"[CHAT ERROR] Full traceback:\n{safe_trace}")
+        # #region agent log
+        try:
+            with open(r"c:\Users\revid\RAG\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"timestamp":int(time.time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"app/backend.py:chat_with_receptionist:exception","message":"Chat exception captured","data":{"error":str(e),"error_type":type(e).__name__,"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None)}}) + "\n")
+        except Exception:
+            pass
+        # #endregion
+        
+        # Log to debug file
+        try:
+            log_path = r"c:\Users\revid\RAG\.cursor\debug.log"
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "sessionId": "error-log",
+                    "runId": "run1",
+                    "hypothesisId": "ERROR",
+                    "location": "app/backend.py:chat_with_receptionist:exception",
+                    "message": "Chat endpoint error",
+                    "data": {
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "message": chat_message.message[:100] if hasattr(chat_message, 'message') else "unknown",
+                        "session_id": chat_message.session_id if hasattr(chat_message, 'session_id') else "unknown"
+                    },
+                    "timestamp": int(time.time() * 1000)
+                }) + "\n")
+        except:
+            pass
+        
+        # Provide more user-friendly error message
+        if "OPENAI_API_KEY" in str(e) or "API key" in str(e).lower():
+            detail = "OpenAI API key is missing or invalid. Please check your .env file."
+        elif "timeout" in str(e).lower():
+            detail = "Request timed out. The AI is taking longer than expected. Please try again."
+        elif "rate limit" in str(e).lower() or "429" in str(e):
+            detail = "OpenAI API rate limit exceeded. Please wait a moment and try again."
+        else:
+            detail = f"An error occurred: {str(e)}. Please try again or contact support."
+        
+        raise HTTPException(status_code=500, detail=detail)
 
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "appointment-booking-api"}
+
+
+@app.get("/api/debug/runtime")
+async def debug_runtime():
+    """Debug endpoint to inspect runtime process and encoding."""
+    # #region agent log
+    try:
+        with open(r"c:\Users\revid\RAG\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"timestamp":int(time.time()*1000),"sessionId":"debug-session","runId":"run2","hypothesisId":"F","location":"app/backend.py:debug_runtime","message":"Runtime debug endpoint hit","data":{"pid":os.getpid(),"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None),"stdout_errors":getattr(getattr(sys,"stdout",None),"errors",None),"pyencoding_env":os.environ.get("PYTHONIOENCODING")}}) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    return {
+        "pid": os.getpid(),
+        "stdout_encoding": getattr(getattr(sys, "stdout", None), "encoding", None),
+        "stdout_errors": getattr(getattr(sys, "stdout", None), "errors", None),
+        "PYTHONIOENCODING": os.environ.get("PYTHONIOENCODING"),
+    }
 
 
 # Add Twilio Voice integration with Whisper if available

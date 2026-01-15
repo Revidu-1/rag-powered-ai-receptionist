@@ -4,7 +4,7 @@ Handles phone calls, uses Whisper for speech-to-text, and processes through AI r
 """
 
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import Response, PlainTextResponse
+from fastapi.responses import Response, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 import requests
@@ -14,6 +14,9 @@ import json
 from datetime import datetime
 from twilio.twiml.voice_response import VoiceResponse, Gather
 import logging
+import hashlib
+import io
+import tempfile
 
 load_dotenv()
 
@@ -34,6 +37,9 @@ conversation_states = {}
 
 # Cache the receptionist graph for better performance
 _receptionist_graph_cache = None
+
+# Cache for OpenAI TTS audio (text hash -> audio bytes)
+_tts_audio_cache = {}
 
 
 def get_receptionist_graph():
@@ -122,28 +128,40 @@ def transcribe_audio_with_whisper(audio_url: str) -> str:
         return ""
 
 
-def text_to_speech_with_openai(text: str) -> Optional[str]:
+def text_to_speech_with_openai(text: str, voice: str = 'nova') -> Optional[bytes]:
     """
     Convert text to speech using OpenAI TTS API.
     
     Args:
         text: Text to convert to speech
+        voice: OpenAI voice to use (alloy, echo, fable, onyx, nova, shimmer)
+               Default: 'nova' (warm, friendly female voice)
     
     Returns:
-        str: URL of the generated audio file, or None if error
+        bytes: Audio file content (MP3), or None if error
     """
     if not OPENAI_API_KEY:
         print("⚠ OpenAI API key not configured for TTS")
         return None
     
+    # Check cache first
+    text_hash = hashlib.md5(text.encode()).hexdigest()
+    cache_key = f"{text_hash}_{voice}"
+    if cache_key in _tts_audio_cache:
+        print(f"[TTS] Using cached audio for text hash: {text_hash[:8]}...")
+        return _tts_audio_cache[cache_key]
+    
     try:
         # Clean text for voice (remove markdown, emojis)
         import re
-        text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)  # Bold
-        text = re.sub(r'\*(.+?)\*', r'\1', text)  # Italic
-        text = re.sub(r'`(.+?)`', r'\1', text)  # Code
-        text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)  # Links
-        text = re.sub(r'\s+', ' ', text).strip()
+        cleaned_text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)  # Bold
+        cleaned_text = re.sub(r'\*(.+?)\*', r'\1', cleaned_text)  # Italic
+        cleaned_text = re.sub(r'`(.+?)`', r'\1', cleaned_text)  # Code
+        cleaned_text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', cleaned_text)  # Links
+        cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+        
+        if not cleaned_text:
+            return None
         
         # Use OpenAI TTS API
         headers = {
@@ -152,12 +170,13 @@ def text_to_speech_with_openai(text: str) -> Optional[str]:
         }
         
         data = {
-            'model': 'tts-1',  # or 'tts-1-hd' for higher quality
-            'input': text,
-            'voice': 'alloy',  # Options: alloy, echo, fable, onyx, nova, shimmer
+            'model': 'tts-1-hd',  # Higher quality for more natural sound
+            'input': cleaned_text,
+            'voice': voice,  # Options: alloy, echo, fable, onyx, nova, shimmer
             'response_format': 'mp3'
         }
         
+        print(f"[TTS] Generating audio with OpenAI TTS (voice: {voice})...")
         response = requests.post(
             'https://api.openai.com/v1/audio/speech',
             headers=headers,
@@ -166,13 +185,19 @@ def text_to_speech_with_openai(text: str) -> Optional[str]:
         )
         response.raise_for_status()
         
-        # Save audio to a temporary file or return as base64
-        # For now, we'll use Twilio's built-in TTS which is simpler
-        # This function is here for future use if needed
-        return None
+        # Get audio bytes
+        audio_bytes = response.content
+        
+        # Cache the audio
+        _tts_audio_cache[cache_key] = audio_bytes
+        print(f"[TTS] Generated and cached audio ({len(audio_bytes)} bytes)")
+        
+        return audio_bytes
         
     except Exception as e:
         print(f"✗ Error with OpenAI TTS: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -292,6 +317,30 @@ def process_voice_message(phone_number: str, transcript: str) -> str:
 def add_twilio_voice_routes(app: FastAPI):
     """Add Twilio Voice webhook routes to FastAPI app."""
     
+    @app.get("/twilio/voice/audio/{audio_hash}")
+    async def serve_audio(audio_hash: str):
+        """
+        Serve OpenAI TTS audio files.
+        Audio is cached by hash, so we can retrieve it here.
+        """
+        cache_key = audio_hash
+        if cache_key in _tts_audio_cache:
+            audio_bytes = _tts_audio_cache[cache_key]
+            return Response(
+                content=audio_bytes,
+                media_type='audio/mpeg',
+                headers={
+                    "Content-Type": "audio/mpeg",
+                    "Cache-Control": "public, max-age=3600"  # Cache for 1 hour
+                }
+            )
+        else:
+            return Response(
+                content="Audio not found",
+                status_code=404,
+                media_type='text/plain'
+            )
+    
     @app.get("/twilio/voice/incoming")
     @app.post("/twilio/voice/incoming")
     async def twilio_voice_incoming(request: Request):
@@ -328,7 +377,7 @@ def add_twilio_voice_routes(app: FastAPI):
                 traceback.print_exc()
                 # Return valid TwiML even if form parsing fails
                 response = VoiceResponse()
-                response.say("I'm sorry, there was an error processing your call. Please try again later.", voice='alice')
+                response.say("I'm sorry, there was an error processing your call. Please try again later.", voice='Polly.Joanna-Neural')
                 response.hangup()
                 twiml_content = str(response)
                 return Response(
@@ -338,13 +387,6 @@ def add_twilio_voice_routes(app: FastAPI):
                 )
             
             print(f"[TWILIO] Incoming call from {from_number} to {to_number} (CallSid: {call_sid})")
-            
-            # Create TwiML response
-            response = VoiceResponse()
-            
-            # Initial greeting
-            greeting = "Hello! Welcome to our salon. I'm your AI receptionist. How can I help you today?"
-            response.say(greeting, voice='alice', language='en-US')
             
             # Get the base URL from the request (for webhook callback)
             # More robust URL construction
@@ -368,6 +410,24 @@ def add_twilio_voice_routes(app: FastAPI):
                     base_url = "https://your-domain.com"  # This should be replaced with actual domain
                     print(f"[WARNING] Using placeholder base URL: {base_url}")
             
+            # Create TwiML response
+            response = VoiceResponse()
+            
+            # Initial greeting - try OpenAI TTS first
+            greeting = "Hello! Welcome to our salon. I'm your AI receptionist. How can I help you today?"
+            greeting_audio = text_to_speech_with_openai(greeting, voice='nova')
+            
+            if greeting_audio:
+                greeting_hash = hashlib.md5(greeting.encode()).hexdigest()
+                audio_hash = f"{greeting_hash}_nova"
+                if audio_hash not in _tts_audio_cache:
+                    _tts_audio_cache[audio_hash] = greeting_audio
+                greeting_url = f"{base_url}/twilio/voice/audio/{audio_hash}"
+                response.play(greeting_url)
+            else:
+                # Fallback to Twilio TTS
+                response.say(greeting, voice='Polly.Joanna-Neural', language='en-US')
+            
             process_url = f"{base_url}/twilio/voice/process"
             print(f"[TWILIO] Using process URL: {process_url}")
             
@@ -380,11 +440,11 @@ def add_twilio_voice_routes(app: FastAPI):
                 language='en-US',
                 timeout=10
             )
-            gather.say('Please speak your message.', voice='alice')
+            gather.say('Please speak your message.', voice='Polly.Joanna-Neural')
             response.append(gather)
             
             # If no input after gather, say goodbye and hangup
-            response.say("Thank you for calling. Goodbye.", voice='alice')
+            response.say("Thank you for calling. Goodbye.", voice='Polly.Joanna-Neural')
             response.hangup()
             
             twiml_content = str(response)
@@ -407,7 +467,7 @@ def add_twilio_voice_routes(app: FastAPI):
             traceback.print_exc()
             try:
                 response = VoiceResponse()
-                response.say("I'm sorry, there was an error. Please try again later.", voice='alice')
+                response.say("I'm sorry, there was an error. Please try again later.", voice='Polly.Joanna-Neural')
                 response.hangup()
                 twiml_content = str(response)
                 return Response(
@@ -419,7 +479,7 @@ def add_twilio_voice_routes(app: FastAPI):
                 print(f"[ERROR] Failed to create error response: {e2}")
                 # Return minimal valid TwiML
                 return Response(
-                    content='<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="alice">Error occurred. Goodbye.</Say><Hangup/></Response>', 
+                    content='<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna-Neural">Error occurred. Goodbye.</Say><Hangup/></Response>', 
                     media_type='application/xml; charset=utf-8',
                     headers={"Content-Type": "application/xml; charset=utf-8"}
                 )
@@ -463,7 +523,7 @@ def add_twilio_voice_routes(app: FastAPI):
                 import traceback
                 traceback.print_exc()
                 response = VoiceResponse()
-                response.say("I'm sorry, there was an error processing your message. Please try again.", voice='alice')
+                response.say("I'm sorry, there was an error processing your message. Please try again.", voice='Polly.Joanna-Neural')
                 response.hangup()
                 return Response(
                     content=str(response), 
@@ -505,7 +565,7 @@ def add_twilio_voice_routes(app: FastAPI):
             if not transcript or not transcript.strip():
                 # No transcript - ask to repeat
                 process_url = f"{get_base_url()}/twilio/voice/process"
-                response.say("I didn't catch that. Could you please repeat?", voice='alice')
+                response.say("I didn't catch that. Could you please repeat?", voice='Polly.Joanna-Neural')
                 gather = Gather(
                     input='speech',
                     action=process_url,
@@ -513,7 +573,7 @@ def add_twilio_voice_routes(app: FastAPI):
                     speech_timeout='auto',
                     language='en-US'
                 )
-                gather.say('Please speak your message.', voice='alice')
+                gather.say('Please speak your message.', voice='Polly.Joanna-Neural')
                 response.append(gather)
                 return Response(
                     content=str(response), 
@@ -539,7 +599,32 @@ def add_twilio_voice_routes(app: FastAPI):
             if len(ai_response) > 500:
                 ai_response = ai_response[:500] + "..."
             
-            response.say(ai_response, voice='alice', language='en-US')
+            # Try to use OpenAI TTS for more natural voice
+            base_url = get_base_url()
+            audio_url = None
+            
+            # Generate audio with OpenAI TTS
+            audio_bytes = text_to_speech_with_openai(ai_response, voice='nova')  # 'nova' is warm, friendly female voice
+            
+            if audio_bytes:
+                # Create hash for the audio
+                text_hash = hashlib.md5(ai_response.encode()).hexdigest()
+                audio_hash = f"{text_hash}_nova"
+                
+                # Ensure it's in cache (should already be there from text_to_speech_with_openai)
+                if audio_hash not in _tts_audio_cache:
+                    _tts_audio_cache[audio_hash] = audio_bytes
+                
+                # Create URL for the audio
+                audio_url = f"{base_url}/twilio/voice/audio/{audio_hash}"
+                print(f"[TTS] Using OpenAI TTS audio: {audio_url}")
+                
+                # Use Play verb to play the audio
+                response.play(audio_url)
+            else:
+                # Fallback to Twilio TTS if OpenAI fails
+                print("[TTS] OpenAI TTS failed, falling back to Twilio TTS")
+                response.say(ai_response, voice='Polly.Joanna-Neural', language='en-US')
             
             # Continue conversation - gather next input (silently, let AI response handle the flow)
             process_url = f"{get_base_url()}/twilio/voice/process"
@@ -555,7 +640,7 @@ def add_twilio_voice_routes(app: FastAPI):
             response.append(gather)
             
             # If no input after timeout, end call gracefully
-            response.say("Thank you for calling. Have a great day!", voice='alice')
+            response.say("Thank you for calling. Have a great day!", voice='Polly.Joanna-Neural')
             response.hangup()
             
             twiml_content = str(response)
@@ -577,7 +662,7 @@ def add_twilio_voice_routes(app: FastAPI):
             traceback.print_exc()
             try:
                 response = VoiceResponse()
-                response.say("I'm sorry, I encountered an error. Please try again later.", voice='alice')
+                response.say("I'm sorry, I encountered an error. Please try again later.", voice='Polly.Joanna-Neural')
                 response.hangup()
                 return Response(
                     content=str(response), 
@@ -588,7 +673,7 @@ def add_twilio_voice_routes(app: FastAPI):
                 print(f"[ERROR] Failed to create error response: {e2}")
                 # Return minimal valid TwiML
                 return Response(
-                    content='<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="alice">Error occurred. Goodbye.</Say><Hangup/></Response>', 
+                    content='<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna-Neural">Error occurred. Goodbye.</Say><Hangup/></Response>', 
                     media_type='application/xml'
                 )
     
@@ -637,7 +722,7 @@ def add_twilio_voice_routes(app: FastAPI):
         Use this to verify Twilio can reach your webhook.
         """
         response = VoiceResponse()
-        response.say("Hello, this is a test. The webhook is working correctly.", voice='alice')
+        response.say("Hello, this is a test. The webhook is working correctly.", voice='Polly.Joanna-Neural')
         response.hangup()
         
         twiml_content = str(response)

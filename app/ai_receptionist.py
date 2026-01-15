@@ -22,6 +22,20 @@ import re
 import requests
 from datetime import datetime
 import json
+import sys
+import io
+
+# Ensure UTF-8 output on Windows to avoid UnicodeEncodeError in logs
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="backslashreplace")
+
+# #region agent log
+try:
+    with open(r'c:\Users\revid\RAG\.cursor\debug.log', 'a', encoding='utf-8') as f:
+        f.write(json.dumps({"timestamp":int(__import__('time').time()*1000),"sessionId":"debug-session","runId":"run2","hypothesisId":"D","location":"ai_receptionist.py:module_import","message":"Receptionist module imported","data":{"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None),"stdout_errors":getattr(getattr(sys,"stdout",None),"errors",None)}}) + '\n')
+except Exception:
+    pass
+# #endregion
 
 # Load environment variables
 load_dotenv()
@@ -35,7 +49,7 @@ def get_llm():
     
     return ChatOpenAI(
         model="gpt-4o-mini",
-        temperature=0.7,
+        temperature=0.8,  # Increased for more natural, varied responses
         api_key=api_key
     )
 
@@ -52,26 +66,44 @@ class ReceptionistState(TypedDict):
 
 
 # System prompt for the AI receptionist
-RECEPTIONIST_SYSTEM_PROMPT = """You are a friendly, professional AI receptionist for a hair and nail salon. Your role is to:
-1. Greet customers warmly and professionally with enthusiasm
-2. Answer questions about salon services, pricing, policies, and appointments
-3. Book appointments when requested - collect: name, email, date (YYYY-MM-DD format), time (HH:MM format), and service type (e.g., haircut, manicure, hair color, pedicure)
-4. Provide information about our services (hair services, nail services, pricing, duration)
-5. Maintain a helpful, cheerful, and courteous tone throughout the conversation
-6. Ask clarifying questions if needed to better assist (e.g., which service, preferred stylist)
-7. Provide accurate information based on the salon knowledge base
+RECEPTIONIST_SYSTEM_PROMPT = """You are a friendly, warm, and personable salon receptionist - think of yourself as a real person who genuinely cares about helping customers. Your personality should feel natural, conversational, and authentically human.
 
-Guidelines:
-- Always be polite, friendly, and enthusiastic about helping customers
-- When booking appointments, make sure to get ALL required information: name, email, date, and time
-- Ask about the service they'd like (haircut, coloring, manicure, pedicure, etc.) - this is very important!
-- For dates, use YYYY-MM-DD format (e.g., 2024-12-25)
-- For times, use 24-hour format HH:MM (e.g., 14:30 for 2:30 PM)
-- If appointment details are missing, politely ask for them one at a time
-- Common services include: Haircuts, Hair Styling, Hair Coloring, Highlights, Manicures, Pedicures, Nail Art, Hair Treatments, Extensions
-- Be knowledgeable about our services, pricing, and policies from the knowledge base
-- Keep responses concise but helpful and friendly
-- Use the provided context from salon documents to answer questions accurately
+CONVERSATION STYLE - Sound like a real person:
+- Use casual, natural language as you would in a friendly conversation
+- Use contractions (I'm, we're, that's, I'd, you're, etc.) to sound more natural
+- Vary your sentence length - mix short, punchy sentences with longer ones
+- Show personality and warmth - use phrases like "Oh great!", "Absolutely!", "Perfect!", "I'd love to help you with that"
+- Express genuine interest: "That sounds lovely!", "I'm so glad you asked about that"
+- Use conversational fillers naturally when appropriate (like "you know", "actually", "so")
+- Match the customer's energy level - if they're casual, be casual; if formal, be slightly more formal but still warm
+- Use natural transitions: "By the way", "Speaking of which", "Let me see"
+- Show empathy: "I totally understand", "That makes sense", "No worries at all"
+- Avoid sounding like a script - each response should feel fresh and spontaneous
+
+YOUR ROLE:
+1. Greet customers like a friendly person, not a robot - be warm and genuine
+2. Answer questions naturally about salon services, pricing, policies, and appointments
+3. Book appointments conversationally - collect: name, email, date (YYYY-MM-DD format), time (HH:MM format), and service type
+4. Provide information naturally about our services, pricing, duration - make it conversational
+5. Be helpful, personable, and authentic - sound like someone the customer would want to talk to
+6. Ask questions naturally when you need clarification - don't sound interrogative
+7. Use information from the salon knowledge base but explain it in your own words, like a person would
+
+BOOKING APPOINTMENTS:
+- When booking, get ALL required info: name, email, date, and time
+- Always ask about the service type (haircut, coloring, manicure, pedicure, etc.) - this is crucial!
+- For dates, use YYYY-MM-DD format internally (e.g., 2024-12-25) but you can say it naturally ("December 25th" or "this Friday")
+- For times, use 24-hour format HH:MM internally (e.g., 14:30) but speak naturally ("2:30 PM" or "two thirty")
+- If info is missing, ask for it naturally, one thing at a time - don't sound like a form
+- Common services: Haircuts, Hair Styling, Hair Coloring, Highlights, Manicures, Pedicures, Nail Art, Hair Treatments, Extensions
+
+IMPORTANT:
+- Never repeat yourself word-for-word - vary how you say things
+- Don't ask "Is there anything else I can help you with?" after every response - only when it makes sense naturally
+- Keep responses helpful but concise - real people don't give long speeches
+- Use the salon knowledge base info, but explain it like you're telling a friend, not reading a manual
+- Be enthusiastic but genuine - not overly excited or fake
+- Show personality - you're not a corporate bot, you're a friendly salon staff member
 """
 
 
@@ -223,13 +255,15 @@ def generate_response(state: ReceptionistState) -> ReceptionistState:
         system_prompt += "\n\nIMPORTANT: This is a VOICE CALL. Your response will be read aloud by text-to-speech. Therefore:\n"
         system_prompt += "- NEVER use markdown formatting (no #, **, *, `, [], etc.)\n"
         system_prompt += "- NEVER use special characters that will be read aloud (like #, *, _, `)\n"
-        system_prompt += "- Write in plain, natural spoken language\n"
-        system_prompt += "- Use simple punctuation (periods, commas, question marks only)\n"
-        system_prompt += "- Avoid lists with bullets or numbers - use natural sentences instead\n"
-        system_prompt += "- Spell out numbers clearly (e.g., 'two thirty' instead of '2:30' when speaking)\n"
-        system_prompt += "- Keep responses concise and conversational\n"
+        system_prompt += "- Write exactly as you would speak naturally - like you're talking to someone on the phone\n"
+        system_prompt += "- Use natural spoken rhythms and pauses (periods for pauses, commas for brief pauses)\n"
+        system_prompt += "- Avoid lists or structured formats - speak in flowing, natural sentences\n"
+        system_prompt += "- Spell out numbers naturally (e.g., 'two thirty' for 2:30 PM, 'December twenty-fifth' for dates)\n"
+        system_prompt += "- Keep responses concise and conversational - sound like a real person on a phone call\n"
+        system_prompt += "- Use natural speech patterns: 'Oh great!' 'Perfect!' 'Absolutely!' 'I'd be happy to help'\n"
         system_prompt += "- Example: Instead of '**Great!** Your appointment is #123', say 'Great! Your appointment number is one hundred twenty three'\n"
-        system_prompt += "- Do NOT end every response with 'Is there anything else I can help you with?' - only ask this when the conversation is naturally ending or when you've completed a task\n"
+        system_prompt += "- Do NOT end every response with 'Is there anything else I can help you with?' - only ask this naturally when the conversation is winding down or when you've completed a task\n"
+        system_prompt += "- Sound warm and friendly, like you're having a real conversation - not like you're reading from a script\n"
     
     # Add system message with current date context (always include for date awareness)
     # For first interaction, include full system prompt; for subsequent messages, include date context
@@ -395,7 +429,7 @@ def book_appointment(state: ReceptionistState) -> ReceptionistState:
     
     # Check if already booked
     if appointment_data.get("booked"):
-        print("✓ Appointment already booked, skipping")
+        print("Appointment already booked, skipping")
         # #region agent log
         with open(r'c:\Users\revid\RAG\.cursor\debug.log', 'a', encoding='utf-8') as f:
             f.write(json.dumps({"timestamp":int(__import__('time').time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"ai_receptionist.py:book_appointment:already_booked","message":"Appointment already booked, skipping","data":{}}) + '\n')
@@ -408,7 +442,7 @@ def book_appointment(state: ReceptionistState) -> ReceptionistState:
     
     if missing_fields:
         # Not enough information yet - this shouldn't happen if should_book_appointment worked correctly
-        print(f"⚠ Warning: Missing required fields for booking: {missing_fields}")
+        print(f"Warning: Missing required fields for booking: {missing_fields}")
         print(f"Current appointment data: {appointment_data}")
         return state
     
@@ -532,6 +566,13 @@ def should_book_appointment(state: ReceptionistState) -> Literal["book", "skip_b
     appointment_data = state.get("appointment_data", {})
     intent = state.get("intent", "")
     conversation_stage = state.get("conversation_stage", "")
+    # #region agent log
+    try:
+        with open(r'c:\Users\revid\RAG\.cursor\debug.log', 'a', encoding='utf-8') as f:
+            f.write(json.dumps({"timestamp":int(__import__('time').time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"ai_receptionist.py:should_book_appointment:entry","message":"Entry state snapshot","data":{"intent":intent,"conversation_stage":conversation_stage,"has_stdout":bool(getattr(sys,"stdout",None)),"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None)}}) + '\n')
+    except Exception:
+        pass
+    # #endregion
     
     # Check if we have all required fields
     required_fields = ["name", "email", "date", "time"]
@@ -548,7 +589,7 @@ def should_book_appointment(state: ReceptionistState) -> Literal["book", "skip_b
     # Don't require intent to be "scheduling" because intent might change during the conversation
     # Just check if we have appointment data that's being collected
     if has_all_fields and not already_booked:
-        print(f"✓ All required fields present. Booking appointment: {appointment_data}")
+        print(f"All required fields present. Booking appointment: {appointment_data}")
         # #region agent log
         with open(r'c:\Users\revid\RAG\.cursor\debug.log', 'a', encoding='utf-8') as f:
             f.write(json.dumps({"timestamp":int(__import__('time').time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"ai_receptionist.py:should_book_appointment:return","message":"Decision to book","data":{"decision":"book"}}) + '\n')
@@ -559,7 +600,14 @@ def should_book_appointment(state: ReceptionistState) -> Literal["book", "skip_b
     if intent == "scheduling" or conversation_stage in ["routing", "inquiry"]:
         missing = [f for f in required_fields if not appointment_data.get(f)]
         if missing:
-            print(f"⏳ Still need fields for booking: {missing}")
+            # #region agent log
+            try:
+                with open(r'c:\Users\revid\RAG\.cursor\debug.log', 'a', encoding='utf-8') as f:
+                    f.write(json.dumps({"timestamp":int(__import__('time').time()*1000),"sessionId":"debug-session","runId":"run1","hypothesisId":"B","location":"ai_receptionist.py:should_book_appointment:missing","message":"Missing fields computed","data":{"missing":missing,"stdout_encoding":getattr(getattr(sys,"stdout",None),"encoding",None)}}) + '\n')
+            except Exception:
+                pass
+            # #endregion
+            print(f"Still need fields for booking: {missing}")
     
     # #region agent log
     with open(r'c:\Users\revid\RAG\.cursor\debug.log', 'a', encoding='utf-8') as f:
@@ -638,22 +686,22 @@ def chat_with_receptionist():
                 response = requests.get("http://127.0.0.1:8000/api/health", timeout=2)
                 if response.status_code == 200:
                     backend_running = True
-                    print("✓ Backend is running and ready!")
+                    print("Backend is running and ready!")
                 else:
                     backend_running = True
-                    print("✓ Backend is running (port 8000 is open)!")
+                    print("Backend is running (port 8000 is open)!")
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
                 # Port is open but HTTP not responding - might be starting up
                 backend_running = True
-                print("✓ Backend port is open (may still be starting up)")
+                print("Backend port is open (may still be starting up)")
             except Exception:
                 backend_running = True
-                print("✓ Backend port is open")
+                print("Backend port is open")
     except Exception:
         pass
     
     if not backend_running:
-        print("⚠ WARNING: Cannot connect to backend on port 8000!")
+        print("WARNING: Cannot connect to backend on port 8000!")
         print("   Please start the backend first with: python scripts/start_backend.py")
         print("   Appointments cannot be booked without the backend running.\n")
         user_response = input("Continue anyway? (y/n): ").strip().lower()
@@ -715,7 +763,7 @@ def chat_with_receptionist():
         # Check if appointment was just booked
         if state.get("appointment_data", {}).get("booked"):
             print("="*80)
-            print("✓ Appointment successfully booked!")
+            print("Appointment successfully booked!")
             print(f"   View all appointments at: http://localhost:8000")
             print("="*80 + "\n")
     

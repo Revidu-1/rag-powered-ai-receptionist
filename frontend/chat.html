@@ -275,7 +275,7 @@
     <div class="chat-container">
         <div class="chat-header">
             <div>
-                <h1>💇‍♀️ AI Salon Receptionist</h1>
+                <h1>AI Salon Receptionist</h1>
                 <div class="subtitle">Ask questions or book an appointment</div>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
@@ -286,7 +286,7 @@
 
         <div class="chat-messages" id="chatMessages">
             <div class="welcome-message">
-                <h2>👋 Welcome!</h2>
+                <h2>Welcome!</h2>
                 <p>I'm your AI salon receptionist. I can help you with:</p>
                 <p>• Questions about our services and pricing</p>
                 <p>• Booking appointments</p>
@@ -323,7 +323,7 @@
             
             const avatar = document.createElement('div');
             avatar.className = 'message-avatar';
-            avatar.textContent = isUser ? '👤' : '💇‍♀️';
+            avatar.textContent = isUser ? 'U' : 'AI';
             
             const messageContent = document.createElement('div');
             messageContent.className = 'message-content';
@@ -427,7 +427,7 @@
                     const successDiv = document.createElement('div');
                     successDiv.className = 'appointment-success';
                     successDiv.innerHTML = `
-                        ✅ Appointment #${data.appointment_id} booked successfully! 
+                        Appointment #${data.appointment_id} booked successfully! 
                         <a href="/" class="link-button" style="margin-left: 10px;">View Dashboard</a>
                     `;
                     chatMessages.appendChild(successDiv);
