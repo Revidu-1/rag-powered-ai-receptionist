@@ -33,17 +33,6 @@
     "status": "scheduled"
   },
   {
-    "id": 8,
-    "name": "revidu",
-    "email": "revidu33@gmail.com",
-    "date": "2026-01-10",
-    "time": "00:00",
-    "purpose": null,
-    "service": null,
-    "created_at": "2026-01-09T16:16:00.128220",
-    "status": "scheduled"
-  },
-  {
     "id": 9,
     "name": "Revidu",
     "email": "revidu33@gmail.com",
@@ -52,7 +41,7 @@
     "purpose": null,
     "service": null,
     "created_at": "2026-01-09T16:16:19.161466",
-    "status": "scheduled"
+    "status": "completed"
   },
   {
     "id": 10,
@@ -118,6 +107,50 @@
     "purpose": null,
     "service": "haircut",
     "created_at": "2026-01-15T02:16:40.814699",
+    "status": "scheduled"
+  },
+  {
+    "id": 16,
+    "name": "Revidu Liyanage",
+    "email": "revidu33@gmail.com",
+    "date": "2023-10-06",
+    "time": "17:00",
+    "purpose": null,
+    "service": "haircut",
+    "created_at": "2026-01-15T09:37:13.329644",
+    "status": "scheduled"
+  },
+  {
+    "id": 17,
+    "name": "Revidu",
+    "email": "revidu33@gmail.com",
+    "date": "2023-10-13",
+    "time": "17:00",
+    "purpose": null,
+    "service": "haircut",
+    "created_at": "2026-01-15T10:16:48.252056",
+    "status": "scheduled"
+  },
+  {
+    "id": 18,
+    "name": "Revidu",
+    "email": "revidu33@gmail.com",
+    "date": "2023-10-03",
+    "time": "17:00",
+    "purpose": null,
+    "service": "haircut",
+    "created_at": "2026-01-15T10:17:12.016346",
+    "status": "scheduled"
+  },
+  {
+    "id": 19,
+    "name": "Revidu",
+    "email": "revidu33@gmail.com",
+    "date": "2023-10-04",
+    "time": "17:00",
+    "purpose": null,
+    "service": "haircut",
+    "created_at": "2026-01-15T10:18:41.709864",
     "status": "scheduled"
   }
 ]
